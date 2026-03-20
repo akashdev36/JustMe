@@ -41,7 +41,7 @@ export default function NotesEditor({ onBack, pipMode }: { onBack?: () => void, 
       setDragX(diff) // allow full drag range
     }
 
-    const handleGlobalMouseUp = (e: MouseEvent) => {
+    const handleGlobalMouseUp = () => {
       if (dragStartX === null) return
 
       if (dragX > 60) {

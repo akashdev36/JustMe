@@ -5,7 +5,7 @@ import NotesEditor from './NotesEditor'
 import ArticleReader from './ArticleReader'
 
 export default function NotesPage(): React.ReactElement {
-  const { loadNotes, isLoading, activeNoteId, notes, setActiveNoteId } = useNotesStore()
+  const { loadNotes, isLoading, activeNoteId, notes } = useNotesStore()
   
   const [previewNoteId, setPreviewNoteId] = useState<string | null>(null)
   const [isReaderFullscreen, setIsReaderFullscreen] = useState(false)
