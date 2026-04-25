@@ -200,7 +200,7 @@ export default function ArticleReader({ content, embedded, onUpdateNote }: Artic
     const isQuote = node.type === 'blockquote'
     const isListItem = node.type === 'list-item'
 
-    const innerContent = children.map((child: any, cIdx: number) => renderLeaf(child, cIdx, idx))
+    const innerContent = children.map((child: any, cIdx: number) => renderLeaf(child, cIdx))
 
     if (children.length === 1 && children[0].text === '' && !isListItem) {
       return <div key={idx} className="h-8" />

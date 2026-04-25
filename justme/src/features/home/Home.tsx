@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useNotesStore } from '../notes/useNotesStore'
-import { useAuthStore } from '../auth/useAuthStore'
 import DayJournalView from './DayJournalView'
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
