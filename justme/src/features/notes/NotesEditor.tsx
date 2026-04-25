@@ -3,9 +3,10 @@ import { useNotesStore } from './useNotesStore'
 import ArticleReader from './ArticleReader'
 import * as notesService from './notesService'
 
-export default function NotesEditor(): React.ReactElement {
-  const { activeNoteId, notes, updateNote } = useNotesStore()
-  const activeNote = notes.find((n) => n.id === activeNoteId)
+export default function NotesEditor({ noteId }: { noteId?: string }): React.ReactElement {
+  const { activeNoteId: storeActiveId, notes, updateNote } = useNotesStore()
+  const activeNote = notes.find((n) => n.id === (noteId || storeActiveId))
+  const currentNoteId = noteId || storeActiveId
   const [inputText, setInputText] = useState('')
   const [isUploading, setIsUploading] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -23,7 +24,7 @@ export default function NotesEditor(): React.ReactElement {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !activeNoteId) return
+    if (!file || !currentNoteId) return
 
     setIsUploading(true)
     try {
@@ -39,7 +40,7 @@ export default function NotesEditor(): React.ReactElement {
       }
 
       const updatedContent = [...messages, newImageNode]
-      updateNote(activeNoteId, { content: updatedContent as any })
+      updateNote(currentNoteId, { content: updatedContent as any })
     } catch (err) {
       console.error('Upload failed', err)
       alert('Failed to upload image to Google Drive')
@@ -95,7 +96,7 @@ export default function NotesEditor(): React.ReactElement {
     })
 
     const updatedContent = [...messages, ...newMessages]
-    updateNote(activeNoteId!, { content: updatedContent as any })
+    updateNote(currentNoteId!, { content: updatedContent as any })
     setInputText('')
 
     if (inputRef.current) {
@@ -171,7 +172,7 @@ export default function NotesEditor(): React.ReactElement {
             <ArticleReader
               content={activeNote.content}
               embedded
-              onUpdateNote={(newContent) => updateNote(activeNoteId!, { content: newContent as any })}
+              onUpdateNote={(newContent) => updateNote(currentNoteId!, { content: newContent as any })}
             />
           )}
         </div>

@@ -36,6 +36,8 @@ export type NoteFile = {
   id: string
   title: string
   content: Descendant[] // Slate.js custom format
+  pinned?: boolean
+  tags?: string[]
   createdAt: string // ISO
   updatedAt: string // ISO
 }

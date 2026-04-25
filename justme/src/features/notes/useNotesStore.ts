@@ -21,6 +21,8 @@ interface NotesState {
   updateNote: (id: string, changes: Partial<NoteFile>) => void
   deleteNote: (id: string) => Promise<void>
   loadNotes: () => Promise<void>
+  findJournalNote: (dateStr: string) => NoteFile | undefined
+  createJournalNote: (dateStr: string) => Promise<string>
 }
 
 export const useNotesStore = create<NotesState>((set, get) => ({
@@ -146,5 +148,31 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     } finally {
       set({ isLoading: false })
     }
+  },
+
+  findJournalNote: (dateStr: string) => {
+    return get().notes.find(n => n.title === `journal::${dateStr}`)
+  },
+
+  createJournalNote: async (dateStr: string) => {
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const newNote: NoteFile = {
+      id,
+      title: `journal::${dateStr}`,
+      content: [{ type: 'paragraph', children: [{ text: '' }] }],
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const updatedNotes = [newNote, ...get().notes]
+    get().setNotes(updatedNotes)
+    
+    try {
+      await notesService.saveNote(newNote)
+    } catch (err) {
+      console.error('Failed to create journal entry in Drive', err)
+    }
+    return id
   },
 }))

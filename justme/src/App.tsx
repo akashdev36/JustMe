@@ -5,6 +5,7 @@ import { PublicRoute, ProtectedRoute } from './router/index'
 import GoogleLoginButton from './features/auth/GoogleLoginButton'
 import AppShell from './features/shell/AppShell'
 import NotesPage from './features/notes/NotesPage'
+import Home from './features/home/Home'
 import { useAuthStore } from './features/auth/useAuthStore'
 
 export default function App(): React.ReactElement {
@@ -82,6 +83,7 @@ export default function App(): React.ReactElement {
       </Route>
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
+          <Route path="/home" element={<Home />} />
           <Route path="/notes" element={<NotesPage />} />
         </Route>
       </Route>
