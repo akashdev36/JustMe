@@ -29,6 +29,38 @@ export function requestAccessToken(): void {
   }
 }
 
+/**
+ * Silently request a new access token with no popup.
+ * Works as long as the user's Google session is still active in the browser.
+ * Returns a promise that resolves with { access_token, expires_in } or rejects on failure.
+ */
+export function silentRefreshToken(): Promise<{ access_token: string; expires_in: number }> {
+  return new Promise((resolve, reject) => {
+    const tryRefresh = () => {
+      if (!tokenClient) {
+        setTimeout(tryRefresh, 200)
+        return
+      }
+      tokenClient.requestAccessToken({
+        prompt: '',           // Empty string = no popup / no consent screen
+        callback: (response: any) => {
+          if (response?.error) {
+            reject(new Error(response.error))
+          } else if (response?.access_token) {
+            resolve({
+              access_token: response.access_token,
+              expires_in: response.expires_in ?? 3600,
+            })
+          } else {
+            reject(new Error('No access token in silent refresh response'))
+          }
+        },
+      })
+    }
+    tryRefresh()
+  })
+}
+
 export function signOut(accessToken: string): void {
   const g = (window as any).google
   if (g?.accounts?.oauth2 && accessToken) {

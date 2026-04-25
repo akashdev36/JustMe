@@ -1,75 +1,11 @@
-import React from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { signOut } from '../../lib/googleClient'
+import React, { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../auth/useAuthStore'
+import { useNotesStore } from '../notes/useNotesStore'
 
 interface SidebarProps {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
-}
-
-// Hand-crafted SVG icon: house shape
-function HomeIcon(): React.ReactElement {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {/* Roof */}
-      <polyline points="3 10 12 3 21 10" />
-      {/* Walls */}
-      <rect x="5" y="10" width="14" height="11" rx="1" />
-      {/* Door */}
-      <rect x="9" y="15" width="6" height="6" rx="0.5" />
-    </svg>
-  )
-}
-
-// Hand-crafted SVG icon: door with exit arrow
-function SignOutIcon(): React.ReactElement {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {/* Door frame */}
-      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-      {/* Arrow pointing right */}
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  )
-}
-
-const AVATAR_COLORS = [
-  'bg-indigo-500',
-  'bg-emerald-500',
-  'bg-rose-500',
-  'bg-amber-500',
-  'bg-sky-500',
-  'bg-violet-500',
-]
-
-function getAvatarColor(email: string): string {
-  let code = 0
-  for (let i = 0; i < email.length; i++) {
-    code += email.charCodeAt(i)
-  }
-  return AVATAR_COLORS[code % AVATAR_COLORS.length]
 }
 
 export default function Sidebar({
@@ -77,34 +13,54 @@ export default function Sidebar({
   setSidebarOpen,
 }: SidebarProps): React.ReactElement {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { user, logout } = useAuthStore()
+  const { logout } = useAuthStore()
+  const { notes, activeNoteId, setActiveNoteId, createNote, deleteNote } = useNotesStore()
+
+  const [showNameInput, setShowNameInput] = useState(false)
+  const [noteName, setNoteName] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (showNameInput) {
+      setTimeout(() => nameInputRef.current?.focus(), 50)
+    }
+  }, [showNameInput])
 
   const handleSignOut = () => {
-    signOut(user?.token || '')
     logout()
     navigate('/')
   }
 
-  const handleNavHome = () => {
-    navigate('/home')
-    setSidebarOpen(false)
+  const handleClickPlus = () => {
+    setNoteName('')
+    setShowNameInput(true)
   }
 
-  const isHomeActive = location.pathname === '/home'
-  const avatarLetter = user?.name
-    ? user.name.charAt(0).toUpperCase()
-    : user?.email
-    ? user.email.charAt(0).toUpperCase()
-    : 'U'
-  const avatarColor = user?.email ? getAvatarColor(user.email) : 'bg-indigo-500'
+  const handleConfirmCreate = async () => {
+    const title = noteName.trim()
+    if (!title) return
+    setShowNameInput(false)
+    setNoteName('')
+    await createNote(title)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleConfirmCreate()
+    if (e.key === 'Escape') {
+      setShowNameInput(false)
+      setNoteName('')
+    }
+  }
+
+  // Width management for integrated pushing
+  const sidebarWidth = sidebarOpen ? 'w-[280px]' : 'w-0 invisible'
 
   return (
     <>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/40 md:hidden"
+          className="fixed inset-0 z-20 bg-black/10 md:hidden backdrop-blur-sm"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -113,81 +69,110 @@ export default function Sidebar({
       {/* Sidebar panel */}
       <aside
         className={[
-          'fixed top-0 left-0 z-30 h-full w-[260px] bg-white border-r border-gray-300',
-          'flex flex-col transition-transform duration-300 ease-in-out',
-          sidebarOpen ? 'translate-x-0 md:static md:z-auto' : '-translate-x-full md:hidden',
+          'h-full bg-white border-r border-gray-100 flex flex-col',
+          'transition-all duration-300 ease-in-out overflow-hidden',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          'fixed inset-y-0 left-0 z-30 md:relative md:z-auto',
+          sidebarWidth
         ].join(' ')}
-        aria-label="Sidebar navigation"
+        onTransitionEnd={() => {}}
       >
-        {/* TOP: User profile */}
-        {user && (
-          <div className="h-[48px] flex items-center px-6 border-b border-gray-200/50">
-            <div className="flex items-center gap-3 min-w-0 w-full">
-              <div
-                className={`flex-shrink-0 w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-white text-xs font-semibold`}
-              >
-                {avatarLetter}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {user.name}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+        <div className="flex flex-col h-full w-[280px]">
+          {/* HEADER */}
+          <div className="pt-8 pb-4 px-8 flex items-center justify-between flex-shrink-0">
+            <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest">Workspace</span>
+            <button
+              onClick={handleClickPlus}
+              className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-all"
+              title="New note"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Inline Name Input — appears below header when + is clicked */}
+          {showNameInput && (
+            <div className="px-4 pb-3 flex-shrink-0">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={noteName}
+                  onChange={(e) => setNoteName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onBlur={() => setTimeout(() => { setShowNameInput(false); setNoteName('') }, 150)}
+                  placeholder="Note name..."
+                  className="flex-1 text-[14px] font-medium text-gray-800 bg-transparent outline-none placeholder-gray-400"
+                />
+                <button
+                  onClick={handleConfirmCreate}
+                  disabled={!noteName.trim()}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-900 text-white disabled:opacity-30 transition-opacity hover:bg-gray-700 flex-shrink-0"
+                  title="Create"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
               </div>
             </div>
+          )}
+
+          {/* NAVIGATION: Note Titles */}
+          <nav className="flex-1 px-4 pt-2 overflow-y-auto space-y-1 [&::-webkit-scrollbar]:hidden">
+            {notes.map((note) => (
+              <div key={note.id} className="relative group px-2">
+                <button
+                  onClick={() => {
+                    setActiveNoteId(note.id)
+                    if (window.innerWidth < 768) setSidebarOpen(false)
+                  }}
+                  className={[
+                    'block w-full text-left px-4 py-3 rounded-lg text-[15px] transition-all duration-200 truncate pr-10',
+                    activeNoteId === note.id
+                      ? 'text-gray-900 font-bold bg-gray-50'
+                      : 'text-gray-500 font-medium hover:text-gray-900 hover:bg-gray-50/50'
+                  ].join(' ')}
+                >
+                  {note.title || 'Untitled Story'}
+                </button>
+                
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (window.confirm('Delete this note?')) {
+                      deleteNote(note.id)
+                    }
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                  title="Delete note"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                </button>
+              </div>
+            ))}
+            {notes.length === 0 && (
+              <p className="px-4 py-10 text-[14px] text-gray-300 italic text-center">Your library is empty.</p>
+            )}
+          </nav>
+
+          {/* FOOTER: Sign Out */}
+          <div className="px-8 py-6 border-t border-gray-50">
+            <button
+              onClick={handleSignOut}
+              className="text-[14px] font-medium text-gray-300 hover:text-gray-600 transition-colors"
+            >
+              Log out
+            </button>
           </div>
-        )}
-
-        {/* MIDDLE: Navigation */}
-        <nav className="flex-1 px-5 py-6 overflow-y-auto space-y-2">
-          {/* Home */}
-          <button
-            type="button"
-            onClick={handleNavHome}
-            className={[
-              'w-full flex items-center gap-4 px-4 py-3.5 rounded-lg text-sm font-medium transition-colors',
-              isHomeActive
-                ? 'bg-[#f0faf4] text-[#2d5a0e]'
-                : 'text-[#6a6a68] hover:bg-gray-100',
-            ].join(' ')}
-            aria-current={isHomeActive ? 'page' : undefined}
-          >
-            <HomeIcon />
-            <span>Home</span>
-          </button>
-
-          {/* Notes */}
-          <button
-            type="button"
-            onClick={() => { navigate('/notes'); setSidebarOpen(false) }}
-            className={[
-              'w-full flex items-center gap-4 px-4 py-3.5 rounded-lg text-sm font-medium transition-colors',
-              location.pathname === '/notes'
-                ? 'bg-[#f0faf4] text-[#2d5a0e]'
-                : 'text-[#6a6a68] hover:bg-gray-100'
-            ].join(' ')}
-          >
-            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-              <circle cx="9" cy="9" r="0.5" fill="currentColor" />
-            </svg>
-            <span>Notes</span>
-          </button>
-        </nav>
-
-        {/* BOTTOM: Sign Out */}
-        <div className="px-6 py-6 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="w-full flex items-center gap-4 px-4 py-3.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
-          >
-            <SignOutIcon />
-            <span>Sign Out</span>
-          </button>
         </div>
       </aside>
     </>

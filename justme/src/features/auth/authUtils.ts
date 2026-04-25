@@ -3,9 +3,13 @@ export type DecodedGoogleUser = {
   email: string
   picture: string
   token: string
+  tokenExpiry: number // Unix ms — when the access token expires
 }
 
-export async function fetchUserProfile(accessToken: string): Promise<DecodedGoogleUser> {
+export async function fetchUserProfile(
+  accessToken: string,
+  expiresIn = 3600
+): Promise<DecodedGoogleUser> {
   const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -28,5 +32,7 @@ export async function fetchUserProfile(accessToken: string): Promise<DecodedGoog
     email: parsed.email ?? '',
     picture: parsed.picture ?? '',
     token: accessToken,
+    // Subtract 60s buffer so we refresh before it actually expires
+    tokenExpiry: Date.now() + (expiresIn - 60) * 1000,
   }
 }

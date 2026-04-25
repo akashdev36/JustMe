@@ -7,6 +7,7 @@ interface AuthState {
   user: DecodedGoogleUser | null
   isLoggedIn: boolean
   login: (userData: DecodedGoogleUser) => void
+  refreshToken: (token: string, tokenExpiry: number) => void
   logout: () => void
 }
 
@@ -26,7 +27,7 @@ function loadFromStorage(): DecodedGoogleUser | null {
 
 const storedUser = loadFromStorage()
 
-export const useAuthStore = create<AuthState>()((set) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
   user: storedUser,
   isLoggedIn: storedUser !== null,
 
@@ -35,9 +36,18 @@ export const useAuthStore = create<AuthState>()((set) => ({
     set({ user: userData, isLoggedIn: true })
   },
 
+  refreshToken: (token: string, tokenExpiry: number) => {
+    const current = get().user
+    if (!current) return
+    const updated = { ...current, token, tokenExpiry }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+    set({ user: updated })
+  },
+
   logout: () => {
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem('justme_notes_folder_id')
     set({ user: null, isLoggedIn: false })
   },
 }))
+

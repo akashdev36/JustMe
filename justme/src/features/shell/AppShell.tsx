@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useNavigate, Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 
 declare global {
@@ -11,28 +11,10 @@ declare global {
   }
 }
 
-// Hamburger icon: three horizontal lines
-function HamburgerIcon(): React.ReactElement {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <line x1="3" y1="12" x2="21" y2="12" />
-      <line x1="3" y1="18" x2="21" y2="18" />
-    </svg>
-  )
-}
+// Header is gone, HamburgerIcon no longer needed
 
 export default function AppShell(): React.ReactElement {
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const pipWindowRef = useRef<Window | null>(null)
 
@@ -64,20 +46,20 @@ export default function AppShell(): React.ReactElement {
     })
     pipWindowRef.current = pipWindow
 
-    // Copy all styles from main window to PiP window
-    ;[...document.styleSheets].forEach(sheet => {
-      try {
-        const cssRules = [...sheet.cssRules].map(rule => rule.cssText).join('')
-        const style = document.createElement('style')
-        style.textContent = cssRules
-        pipWindow.document.head.appendChild(style)
-      } catch {
-        const link = document.createElement('link')
-        link.rel = 'stylesheet'
-        link.href = (sheet as CSSStyleSheet).href ?? ''
-        pipWindow.document.head.appendChild(link)
-      }
-    })
+      // Copy all styles from main window to PiP window
+      ;[...document.styleSheets].forEach(sheet => {
+        try {
+          const cssRules = [...sheet.cssRules].map(rule => rule.cssText).join('')
+          const style = document.createElement('style')
+          style.textContent = cssRules
+          pipWindow.document.head.appendChild(style)
+        } catch {
+          const link = document.createElement('link')
+          link.rel = 'stylesheet'
+          link.href = (sheet as CSSStyleSheet).href ?? ''
+          pipWindow.document.head.appendChild(link)
+        }
+      })
 
     pipWindow.document.body.style.margin = '0'
     pipWindow.document.body.style.padding = '0'
@@ -107,46 +89,51 @@ export default function AppShell(): React.ReactElement {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gray-50">
-      {/* Sidebar */}
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-white">
+      {/* Global Header — fixed at top */}
+      <header className="h-[60px] px-6 bg-white border-b border-gray-100 flex items-center gap-4 flex-shrink-0 z-40">
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="w-[38px] h-[38px] flex items-center justify-center rounded-xl border-2 border-gray-900 group transition-all active:scale-95"
+          aria-label="Toggle sidebar"
+        >
+          <div className="flex flex-col gap-[3px]">
+            <div className="w-[18px] h-[2.5px] bg-gray-900 rounded-full" />
+            <div className="w-[18px] h-[2.5px] bg-gray-900 rounded-full" />
+            <div className="w-[18px] h-[2.5px] bg-gray-900 rounded-full" />
+          </div>
+        </button>
+        <span
+          className="text-[20px] font-bold text-gray-900 leading-none pb-0.5 cursor-pointer"
+          style={{ fontFamily: "'Lora', serif" }}
+          onClick={() => navigate('/notes')}
+        >
+          JustMe
+        </span>
 
-      {/* Main content area */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {/* Top header bar */}
-        <header className="flex items-center h-[48px] px-4 bg-white border-b border-gray-200/50 flex-shrink-0">
+        <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-md text-gray-600 hover:bg-gray-100 transition-colors"
-            aria-label="Toggle sidebar"
+            onClick={openPiP}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-100 text-gray-400 hover:text-gray-900 transition-all shadow-sm"
+            title="Float on top"
           >
-            <HamburgerIcon />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <rect x="2" y="2" width="20" height="20" rx="2" />
+              <rect x="12" y="12" width="8" height="6" rx="1" fill="currentColor" stroke="none" />
+            </svg>
           </button>
-          <span
-            className="ml-3 text-xl font-semibold text-gray-900"
-            style={{ fontFamily: "'Lora', serif" }}
-          >
-            JustMe
-          </span>
+        </div>
+      </header>
 
-          <div className="ml-auto flex items-center gap-2">
-            <button 
-              type="button"
-              onClick={openPiP}
-              className="w-7 h-7 flex items-center justify-center rounded-md border-[0.5px] border-gray-200 bg-transparent text-gray-500 hover:text-[#333] transition-colors"
-              title="Float on top"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="2" width="20" height="20" rx="2"/>
-                <rect x="12" y="12" width="8" height="6" rx="1" fill="currentColor" stroke="none"/>
-              </svg>
-            </button>
-          </div>
-        </header>
+      {/* Main Container: Sidebar + Content */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar */}
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto bg-white">
           <Outlet />
         </main>
       </div>

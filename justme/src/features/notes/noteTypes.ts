@@ -14,7 +14,13 @@ export type BlockquoteElement = { type: 'blockquote'; children: CustomText[] }
 export type BulletListElement = { type: 'bulleted-list'; children: ListItemElement[] }
 export type NumberedListElement = { type: 'numbered-list'; children: ListItemElement[] }
 export type ListItemElement = { type: 'list-item'; children: CustomText[] }
-export type ImageElement = { type: 'image'; url: string; children: [{ text: '' }] }
+export type ImageElement = { 
+  type: 'image'; 
+  url: string; 
+  fileId?: string; // Google Drive File ID
+  caption?: string;
+  children: [{ text: '' }] 
+}
 
 export type CustomElement =
   | ParagraphElement

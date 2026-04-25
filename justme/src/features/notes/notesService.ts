@@ -4,6 +4,7 @@ import type { NoteFile } from './noteTypes'
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files'
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files'
 const FOLDER_CACHE_KEY = 'justme_notes_folder_id'
+const IMAGES_FOLDER_CACHE_KEY = 'justme_images_folder_id'
 const OFFLINE_CACHE_KEY = 'justme_notes_cache'
 
 function getToken(): string {
@@ -35,64 +36,117 @@ async function driveFetch(path: string, options: RequestInit = {}): Promise<Resp
   return response
 }
 
-export async function ensureFolder(): Promise<string> {
-  const cachedId = localStorage.getItem(FOLDER_CACHE_KEY)
-
-  if (cachedId) {
-    try {
-      await driveFetch(`/${cachedId}?fields=id`)
-      return cachedId
-    } catch {
-      localStorage.removeItem(FOLDER_CACHE_KEY)
-    }
+/**
+ * Ensures a specific folder exists inside a parent (or root if parentId is null).
+ */
+async function getOrCreateFolder(name: string, parentId?: string): Promise<string> {
+  let q = `name = '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
+  if (parentId) {
+    q += ` and '${parentId}' in parents`
+  } else {
+    q += ` and 'root' in parents`
   }
 
-  // 1. Check JustMe Folder
-  const qStr1 = "name = 'JustMe' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-  const res1 = await driveFetch(`?q=${encodeURIComponent(qStr1)}&fields=files(id)`)
-  const data1 = (await res1.json()) as { files: { id: string }[] }
-  let justMeId = data1.files[0]?.id
+  const res = await driveFetch(`?q=${encodeURIComponent(q)}&fields=files(id)`)
+  const data = (await res.json()) as { files: { id: string }[] }
+  let folderId = data.files[0]?.id
 
-  if (!justMeId) {
-    const create1 = await driveFetch('', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'JustMe', mimeType: 'application/vnd.google-apps.folder' }),
-    })
-    const created1 = (await create1.json()) as { id: string }
-    justMeId = created1.id
-  }
-
-  // 2. Check Notes Folder inside JustMe
-  const qStr2 = `name = 'Notes' and '${justMeId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
-  const res2 = await driveFetch(`?q=${encodeURIComponent(qStr2)}&fields=files(id)`)
-  const data2 = (await res2.json()) as { files: { id: string }[] }
-  let notesId = data2.files[0]?.id
-
-  if (!notesId) {
-    const create2 = await driveFetch('', {
+  if (!folderId) {
+    const createRes = await driveFetch('', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: 'Notes',
+        name,
         mimeType: 'application/vnd.google-apps.folder',
-        parents: [justMeId],
+        ...(parentId ? { parents: [parentId] } : {}),
       }),
     })
-    const created2 = (await create2.json()) as { id: string }
-    notesId = created2.id
+    const created = (await createRes.json()) as { id: string }
+    folderId = created.id
   }
 
-  if (notesId) {
-    localStorage.setItem(FOLDER_CACHE_KEY, notesId)
-    return notesId
+  return folderId!
+}
+
+export async function ensureNotesFolder(): Promise<string> {
+  const cachedId = localStorage.getItem(FOLDER_CACHE_KEY)
+  if (cachedId) return cachedId
+
+  const rootId = await getOrCreateFolder('JustMe')
+  const notesId = await getOrCreateFolder('Notes', rootId)
+  localStorage.setItem(FOLDER_CACHE_KEY, notesId)
+  return notesId
+}
+
+export async function ensureImagesFolder(): Promise<string> {
+  const cachedId = localStorage.getItem(IMAGES_FOLDER_CACHE_KEY)
+  if (cachedId) return cachedId
+
+  const rootId = await getOrCreateFolder('JustMe')
+  const imagesId = await getOrCreateFolder('Images', rootId)
+  localStorage.setItem(IMAGES_FOLDER_CACHE_KEY, imagesId)
+  return imagesId
+}
+
+export async function uploadImage(file: File): Promise<string> {
+  const folderId = await ensureImagesFolder()
+  
+  // Multipart upload (Metadata + Media)
+  const boundary = 'justme_upload_boundary'
+  const metadata = {
+    name: `${Date.now()}_${file.name}`,
+    parents: [folderId]
   }
-  throw new Error('Failed to create or find notes folder')
+
+  const metadataPart = [
+    `--${boundary}`,
+    'Content-Type: application/json; charset=UTF-8',
+    '',
+    JSON.stringify(metadata),
+    ''
+  ].join('\r\n')
+
+  const mediaHeader = [
+    `--${boundary}`,
+    `Content-Type: ${file.type}`,
+    '',
+    ''
+  ].join('\r\n')
+
+  const footer = `\r\n--${boundary}--`
+
+  // We use Blob to combine the binary parts correctly without character encoding issues
+  const arrayBuffer = await file.arrayBuffer()
+  const multipartBlob = new Blob([
+    metadataPart,
+    mediaHeader,
+    arrayBuffer,
+    footer
+  ], { type: `multipart/related; boundary=${boundary}` })
+
+  const response = await driveFetch(`${UPLOAD_API}?uploadType=multipart`, {
+    method: 'POST',
+    body: multipartBlob,
+  })
+
+  const data = await response.json() as { id: string }
+  return data.id
+}
+
+export async function getAuthenticatedImageUrl(fileId: string): Promise<string> {
+  try {
+    const response = await driveFetch(`/${fileId}?alt=media`)
+    const blob = await response.blob()
+    return URL.createObjectURL(blob)
+  } catch (err) {
+    console.error('Failed to fetch image from Drive', err)
+    return ''
+  }
 }
 
 export async function fetchAllNotes(): Promise<NoteFile[]> {
   try {
-    const folderId = await ensureFolder()
+    const folderId = await ensureNotesFolder()
     const qStr = `'${folderId}' in parents and trashed = false`
     const listRes = await driveFetch(`?q=${encodeURIComponent(qStr)}&fields=files(id,name)`)
     const listData = (await listRes.json()) as { files: { id: string; name: string }[] }
@@ -117,39 +171,34 @@ export async function fetchAllNotes(): Promise<NoteFile[]> {
 }
 
 async function _saveNote(note: NoteFile): Promise<void> {
-  const folderId = await ensureFolder()
+  const folderId = await ensureNotesFolder()
   const qStr = `name = '${note.id}.json' and '${folderId}' in parents and trashed = false`
   const checkRes = await driveFetch(`?q=${encodeURIComponent(qStr)}&fields=files(id)`)
   const checkData = (await checkRes.json()) as { files: { id: string }[] }
   const existingFile = checkData.files[0]
-
   const fileContent = JSON.stringify(note)
 
   if (existingFile) {
-    // Update
     await driveFetch(`${UPLOAD_API}/${existingFile.id}?uploadType=media`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: fileContent,
     })
   } else {
-    // Create Multipart
-    const boundary = 'foo_bar_boundary'
-    const multipartBody = [
-      `--${boundary}`,
-      'Content-Type: application/json; charset=UTF-8',
-      '',
+    // Multipart upload for the json file
+    const boundary = 'justme_json_boundary'
+    const multipartBody = new Blob([
+      `--${boundary}\r\n`,
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n',
       JSON.stringify({ name: `${note.id}.json`, parents: [folderId] }),
-      `--${boundary}`,
-      'Content-Type: application/json',
-      '',
+      `\r\n--${boundary}\r\n`,
+      'Content-Type: application/json\r\n\r\n',
       fileContent,
-      `--${boundary}--`,
-    ].join('\r\n')
+      `\r\n--${boundary}--`
+    ], { type: `multipart/related; boundary=${boundary}` })
 
     await driveFetch(`${UPLOAD_API}?uploadType=multipart`, {
       method: 'POST',
-      headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
       body: multipartBody,
     })
   }
@@ -169,7 +218,7 @@ export async function saveNote(note: NoteFile): Promise<void> {
 }
 
 export async function deleteNote(id: string): Promise<void> {
-  const folderId = await ensureFolder()
+  const folderId = await ensureNotesFolder()
   const qStr = `name = '${id}.json' and '${folderId}' in parents and trashed = false`
   const checkRes = await driveFetch(`?q=${encodeURIComponent(qStr)}&fields=files(id)`)
   const checkData = (await checkRes.json()) as { files: { id: string }[] }

@@ -77,113 +77,81 @@ export default function NotesTopBar({
   }
 
   return (
-    <div className={`${pipMode ? 'h-[40px] min-h-[40px]' : 'h-[52px] min-h-[52px]'} bg-[#ffffff] px-4 flex items-center justify-between flex-shrink-0 animate-fadeIn ${pipMode ? 'border-b-[0.5px] border-[#f0f0f0]' : 'border-b border-[#e5e5e5]'}`}>
-      {/* Left Side */}
-      <div className={`flex items-center gap-3 min-w-0 ${pipMode ? 'flex-1 justify-center' : ''}`}>
+    <div className={`${pipMode ? 'h-[40px] min-h-[40px]' : 'h-[64px] min-h-[64px]'} bg-white px-6 flex items-center justify-between flex-shrink-0 border-b border-gray-100`}>
+      {/* Left Side: Back Arrow + Icon + Title */}
+      <div className="flex items-center gap-4 min-w-0">
         {!pipMode && (
-          <button onClick={onBack} className="text-[#333] hover:text-[#111] flex-shrink-0 transition-colors" aria-label="Back to list">
-            <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <button 
+            onClick={onBack} 
+            className="w-[34px] h-[34px] flex items-center justify-center border-2 border-gray-900 rounded-lg text-gray-900 hover:bg-gray-50 transition-all active:scale-95 flex-shrink-0"
+            aria-label="Back"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
         )}
-        {!pipMode && (
-          <div className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[11px] font-medium flex-shrink-0 bg-[#d8f3dc] text-[#2d6a4f]">
-            {avatarLetter}
-          </div>
-        )}
+        
+        <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-[14px] font-bold flex-shrink-0 bg-[#dcfce7] text-[#166534] shadow-sm">
+          {avatarLetter}
+        </div>
+
         <div className="flex items-baseline gap-2 min-w-0">
           {isEditingTitle ? (
-            <div className="relative inline-flex min-w-[80px] max-w-[200px]">
-              <div className="invisible font-sans text-[13px] font-medium px-0.5 whitespace-nowrap truncate">
-                {titleDraft || ' '}
-              </div>
-              <input
-                ref={titleInputRef}
-                type="text"
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={() => handleTitleSave(titleDraft)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleTitleSave(titleDraft)
-                  else if (e.key === 'Escape') setIsEditingTitle(false)
-                }}
-                className="absolute inset-0 font-['Inter'] text-[16px] font-medium text-[#111111] border-0 border-b border-[#2d6a4f] bg-transparent outline-none p-0 m-0 w-full"
-              />
-            </div>
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={() => handleTitleSave(titleDraft)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleTitleSave(titleDraft)
+                else if (e.key === 'Escape') setIsEditingTitle(false)
+              }}
+              className="font-serif text-[24px] font-bold text-gray-900 bg-transparent outline-none border-b-2 border-gray-900 pb-0.5 w-full max-w-[300px]"
+            />
           ) : (
-            <span
+            <h1
               onClick={startEditing}
-              className={`font-['Inter'] ${pipMode ? 'text-[13px] font-medium' : 'text-[16px] font-weight-[500]'} text-[#111111] truncate max-w-[200px] cursor-text hover:underline hover:decoration-dashed hover:decoration-gray-400`}
+              className="font-serif text-[24px] font-bold text-gray-900 truncate max-w-[400px] cursor-text hover:opacity-80 transition-opacity"
             >
               {titleToShow}
-            </span>
+            </h1>
           )}
         </div>
       </div>
 
-      {/* Right Side */}
+      {/* Right Side: Options (Keeping subtle) */}
       {!pipMode && (
-        <div className="flex items-center gap-2">
-          {/* Read Mode Toggle Button */}
-          {setIsReadMode && (
-            <button
-              onClick={() => setIsReadMode(!isReadMode)}
-              className={`w-[30px] h-[30px] rounded-lg items-center justify-center border transition-colors ${pipMode ? 'flex' : 'md:hidden flex'} ${
-                isReadMode 
-                  ? 'bg-[#f0faf4] text-[#2d6a4f] border-[#2d6a4f]' 
-                  : 'bg-transparent text-[#999] border-gray-200/50 hover:bg-gray-100/80'
-              }`}
-              title={isReadMode ? "Switch to Write Mode" : "Switch to Read Mode"}
-            >
-              {isReadMode ? (
-                /* Write icon - edit */
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-              ) : (
-                /* Read icon - book */
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                </svg>
-              )}
-            </button>
-          )}
-
-          {/* Three-dot menu */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsReadMode?.(!isReadMode)}
+            className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all ${
+              isReadMode 
+                ? 'bg-gray-900 text-white' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {isReadMode ? 'Editing' : 'Previewing'}
+          </button>
+          
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-[#999] hover:bg-[#f5f5f5] transition-colors"
-              aria-label="Menu"
+              className="p-1.5 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="1.5"></circle>
-                <circle cx="12" cy="5" r="1.5"></circle>
-                <circle cx="12" cy="19" r="1.5"></circle>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="12" cy="5" r="1"></circle>
+                <circle cx="12" cy="19" r="1"></circle>
               </svg>
             </button>
-
-            {/* Dropdown Menu */}
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-36 bg-[#1a1a1a] border border-[#333] rounded-lg shadow-lg overflow-hidden py-1 z-50">
-                <button
-                  onClick={handleShare}
-                  className="w-full text-left px-4 py-2 text-[13px] font-sans text-[#f1f1f1] hover:bg-[#262626] transition-colors"
-                >
-                  Share
-                </button>
-              <button
-                onClick={handleDelete}
-                className="w-full text-left px-4 py-2 text-[13px] font-sans text-[#ef4444] hover:bg-[#262626] transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+              <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-xl py-1 z-50">
+                <button onClick={handleDelete} className="w-full text-left px-4 py-2 text-[13px] text-red-600 hover:bg-red-50 transition-colors">Delete Note</button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
