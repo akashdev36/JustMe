@@ -71,10 +71,6 @@ export default function NotesTopBar({
     }
   }
 
-  const handleShare = () => {
-    // Placeholder
-    setMenuOpen(false)
-  }
 
   return (
     <div className={`${pipMode ? 'h-[40px] min-h-[40px]' : 'h-[64px] min-h-[64px]'} bg-white px-6 flex items-center justify-between flex-shrink-0 border-b border-gray-100`}>

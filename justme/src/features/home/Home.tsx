@@ -19,9 +19,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 }
 
 export default function Home(): React.ReactElement {
-  const navigate = useNavigate()
   const { notes } = useNotesStore()
-  const { user } = useAuthStore()
 
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
@@ -161,14 +159,3 @@ export default function Home(): React.ReactElement {
   )
 }
 
-function getPreview(content: any[]): string {
-  if (!content || !Array.isArray(content)) return ''
-  for (const node of content) {
-    if (node.children) {
-      for (const child of node.children) {
-        if (child.text && child.text.trim() !== '') return child.text.trim()
-      }
-    }
-  }
-  return ''
-}

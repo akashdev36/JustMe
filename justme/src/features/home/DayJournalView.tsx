@@ -10,7 +10,7 @@ interface DayJournalViewProps {
 }
 
 export default function DayJournalView({ dateStr, isToday, onClose }: DayJournalViewProps): React.ReactElement {
-  const { findJournalNote, createJournalNote, isLoading } = useNotesStore()
+  const { findJournalNote, createJournalNote } = useNotesStore()
   const [journalNoteId, setJournalNoteId] = useState<string | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
 

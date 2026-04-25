@@ -88,7 +88,7 @@ export default function AppShell(): React.ReactElement {
 
     const root = createRoot(container)
     root.render(
-      React.createElement(NotesEditor, { pipMode: true })
+      React.createElement(NotesEditor, {})
     )
 
     // Cleanup when PiP window closes

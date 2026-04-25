@@ -180,7 +180,7 @@ export default function ArticleReader({ content, embedded, onUpdateNote }: Artic
     return () => document.removeEventListener('selectionchange', handleSelection)
   }, [isEditing])
 
-  const renderLeaf = (leaf: any, childIdx: number, blockIdx: number) => {
+  const renderLeaf = (leaf: any, childIdx: number) => {
     let content = <span data-child-index={childIdx} className="relative">{leaf.text}</span>
     if (leaf.bold) content = <strong className="font-bold text-gray-900">{content}</strong>
     if (leaf.italic) content = <em className="italic">{content}</em>
