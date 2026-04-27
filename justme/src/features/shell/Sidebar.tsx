@@ -91,11 +91,9 @@ export default function Sidebar({
     if (window.innerWidth < 768) setSidebarOpen(false)
   }
 
-  const sidebarWidth = sidebarOpen ? 'w-full md:w-[380px]' : 'w-0 invisible'
-
   return (
     <>
-      {/* Mobile overlay - subtle blur */}
+      {/* Mobile overlay - only show on mobile when sidebar is open */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/5 md:hidden backdrop-blur-[2px]"
@@ -109,9 +107,12 @@ export default function Sidebar({
         className={[
           'h-full bg-[#f0f4f7] border-r border-gray-100 flex flex-col',
           'transition-all duration-300 ease-in-out overflow-hidden',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-          'fixed inset-y-0 left-0 z-50 md:relative md:z-auto',
-          sidebarWidth
+          // Mobile: fixed, off-screen when closed, on-screen when open
+          'fixed inset-y-0 left-0 z-50 md:hidden',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          // Desktop: always visible, collapsible
+          'hidden md:flex md:relative md:z-auto md:flex-col',
+          sidebarOpen ? 'md:w-[380px]' : 'md:w-0 md:opacity-0'
         ].join(' ')}
       >
         <div className="flex flex-col h-full w-full md:w-[380px] relative">

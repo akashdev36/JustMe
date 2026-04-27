@@ -169,7 +169,7 @@ export default function AppShell(): React.ReactElement {
 
       {/* Main Container: Sidebar + Content */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Sidebar */}
+        {/* Sidebar - has its own responsive logic for mobile/desktop */}
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
         {/* Page content */}
