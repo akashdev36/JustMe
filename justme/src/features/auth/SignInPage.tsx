@@ -1,7 +1,11 @@
 import React from 'react'
-import { requestAccessToken } from '../../lib/googleClient'
+import { requestAccessToken } from '../../shared/lib/googleClient'
 
-export default function GoogleLoginButton(): React.ReactElement {
+/**
+ * Full-page sign-in screen.
+ * Triggers the Google OAuth popup via the shared Google client.
+ */
+export default function SignInPage(): React.ReactElement {
   const handleSignIn = () => {
     requestAccessToken()
   }
@@ -30,6 +34,7 @@ export default function GoogleLoginButton(): React.ReactElement {
         </div>
 
         <button
+          id="google-signin-btn"
           onClick={handleSignIn}
           className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-xl px-6 py-3.5 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-all font-sans font-medium text-gray-700 text-sm"
         >

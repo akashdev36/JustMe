@@ -156,7 +156,7 @@ export default function NotesEditor({ noteId }: { noteId?: string }): React.Reac
   return (
     <div className="flex-1 flex flex-col h-full bg-white relative" style={{ fontFamily: "'Lora', serif" }}>
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto py-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex-1 overflow-y-auto scroll-container py-6 md:py-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="max-w-4xl mx-auto px-6 w-full min-h-full">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
@@ -179,9 +179,9 @@ export default function NotesEditor({ noteId }: { noteId?: string }): React.Reac
       </div>
 
       {/* Bottom Input Area */}
-      <div className="flex-shrink-0 pb-10 w-full">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="w-full bg-white rounded-[28px] border border-[#e5e5e5] shadow-[0_10px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)] flex items-end">
+      <div className="flex-shrink-0 pb-4 md:pb-10 w-full">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
+          <div className="w-full bg-white rounded-[24px] border border-[#e5e5e5] shadow-[0_5px_20px_rgba(0,0,0,0.05)] transition-all duration-300 flex items-end">
             
             {/* Hidden File Input */}
             <input 
@@ -196,13 +196,13 @@ export default function NotesEditor({ noteId }: { noteId?: string }): React.Reac
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className={`flex-shrink-0 w-[44px] h-[44px] mb-1.5 ml-2 flex items-center justify-center rounded-full transition-all ${isUploading ? 'bg-gray-100' : 'hover:bg-gray-100 text-gray-500'}`}
+              className={`flex-shrink-0 w-[40px] h-[40px] mb-1 ml-1 flex items-center justify-center rounded-full transition-all ${isUploading ? 'bg-gray-100' : 'hover:bg-gray-100 text-gray-500'}`}
               title="Upload image"
             >
               {isUploading ? (
-                <div className="w-5 h-5 border-2 border-gray-300 border-t-[#d97757] rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-[#d97757] rounded-full animate-spin" />
               ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
@@ -220,7 +220,7 @@ export default function NotesEditor({ noteId }: { noteId?: string }): React.Reac
               onKeyDown={handleKeyDown}
               placeholder="Type a note..."
               rows={1}
-              className="flex-1 resize-none min-h-[56px] px-4 pt-4 pb-2 font-serif text-[21px] leading-[1.6] text-[#292929] placeholder-gray-400 outline-none bg-transparent"
+              className="flex-1 resize-none min-h-[48px] px-3 pt-3 pb-2 font-serif text-[16px] md:text-[21px] leading-[1.6] text-[#292929] placeholder-gray-400 outline-none bg-transparent"
             />
             
             <div className="flex items-center justify-end px-4 pb-3">

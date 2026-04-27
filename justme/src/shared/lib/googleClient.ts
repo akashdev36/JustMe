@@ -2,23 +2,26 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string
 
 let tokenClient: any = null
 
-export function initTokenClient(callback: (response: any) => void): void {
-  const tryInit = () => {
-    if (typeof window !== 'undefined' && (window as any).google?.accounts?.oauth2) {
-      tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: [
-          'https://www.googleapis.com/auth/userinfo.profile',
-          'https://www.googleapis.com/auth/userinfo.email',
-          'https://www.googleapis.com/auth/drive.file',
-        ].join(' '),
-        callback: callback,
-      })
-    } else {
-      setTimeout(tryInit, 200)
+export async function initTokenClient(onTokenResponse?: (response: any) => void): Promise<void> {
+  return new Promise((resolve) => {
+    const tryInit = () => {
+      if (typeof window !== 'undefined' && (window as any).google?.accounts?.oauth2) {
+        tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: [
+            'https://www.googleapis.com/auth/userinfo.profile',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/drive.file',
+          ].join(' '),
+          callback: onTokenResponse || (() => {}),
+        })
+        resolve()
+      } else {
+        setTimeout(tryInit, 200)
+      }
     }
-  }
-  tryInit()
+    tryInit()
+  })
 }
 
 export function requestAccessToken(): void {
@@ -32,7 +35,6 @@ export function requestAccessToken(): void {
 /**
  * Silently request a new access token with no popup.
  * Works as long as the user's Google session is still active in the browser.
- * Returns a promise that resolves with { access_token, expires_in } or rejects on failure.
  */
 export function silentRefreshToken(): Promise<{ access_token: string; expires_in: number }> {
   return new Promise((resolve, reject) => {
@@ -42,7 +44,7 @@ export function silentRefreshToken(): Promise<{ access_token: string; expires_in
         return
       }
       tokenClient.requestAccessToken({
-        prompt: '',           // Empty string = no popup / no consent screen
+        prompt: '',
         callback: (response: any) => {
           if (response?.error) {
             reject(new Error(response.error))

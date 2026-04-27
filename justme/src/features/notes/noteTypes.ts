@@ -1,58 +1,24 @@
-import type { Descendant } from 'slate'
+// noteTypes.ts — re-exports from shared for backward compatibility within this feature
+// Internal files in the notes feature can still import from here
+export type {
+  NoteFile,
+  CustomText,
+  CustomElement,
+  ParagraphElement,
+  HeadingOneElement,
+  HeadingTwoElement,
+  BlockquoteElement,
+  BulletListElement,
+  NumberedListElement,
+  ListItemElement,
+  ImageElement,
+  SlateDescendant,
+} from '../../shared/types'
 
-export type CustomText = {
-  text: string
-  bold?: boolean
-  italic?: boolean
-  underline?: boolean
-}
-
-export type ParagraphElement = { type: 'paragraph'; children: CustomText[] }
-export type HeadingOneElement = { type: 'heading-one'; children: CustomText[] }
-export type HeadingTwoElement = { type: 'heading-two'; children: CustomText[] }
-export type BlockquoteElement = { type: 'blockquote'; children: CustomText[] }
-export type BulletListElement = { type: 'bulleted-list'; children: ListItemElement[] }
-export type NumberedListElement = { type: 'numbered-list'; children: ListItemElement[] }
-export type ListItemElement = { type: 'list-item'; children: CustomText[] }
-export type ImageElement = { 
-  type: 'image'; 
-  url: string; 
-  fileId?: string; // Google Drive File ID
-  caption?: string;
-  children: [{ text: '' }] 
-}
-
-export type CustomElement =
-  | ParagraphElement
-  | HeadingOneElement
-  | HeadingTwoElement
-  | BlockquoteElement
-  | BulletListElement
-  | NumberedListElement
-  | ListItemElement
-  | ImageElement
-
-export type NoteFile = {
-  id: string
-  title: string
-  content: Descendant[] // Slate.js custom format
-  pinned?: boolean
-  tags?: string[]
-  createdAt: string // ISO
-  updatedAt: string // ISO
-}
-
+// Local store type (only used in this feature)
 export type NotesStore = {
-  notes: NoteFile[]
+  notes: import('../../shared/types').NoteFile[]
   activeNoteId: string | null
   isLoading: boolean
   isSaving: boolean
-}
-
-// Slate type declarations
-declare module 'slate' {
-  interface CustomTypes {
-    Element: CustomElement
-    Text: CustomText
-  }
 }
