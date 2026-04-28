@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify'
 import type { AppError, GoogleUserInfo, DecodedGoogleUser } from '../types'
 import { ValidationErrorClass } from '../types'
+export { ValidationErrorClass }
 
 // Security constants
 export const MAX_TITLE_LENGTH = 255
@@ -47,7 +48,6 @@ export function sanitizeHtml(dirty: string): string {
     KEEP_CONTENT: true,
   })
 
-  // Check if sanitization removed content (potential XSS)
   if (clean.length !== dirty.length && dirty.includes('<')) {
     console.warn('Potential XSS attempt detected and sanitized', {
       original: dirty,
@@ -64,7 +64,7 @@ export function validateNoteTitle(title: unknown): string {
   }
 
   const trimmed = title.trim()
-  
+
   if (trimmed.length === 0) {
     return 'Untitled'
   }
@@ -78,7 +78,6 @@ export function validateNoteTitle(title: unknown): string {
     )
   }
 
-  // Remove any potentially dangerous characters
   return sanitizeHtml(trimmed)
 }
 
@@ -96,7 +95,6 @@ export function validateNoteContent(content: unknown): any[] {
     )
   }
 
-  // Validate each content node
   return content.map((node, index) => {
     if (!node || typeof node !== 'object') {
       throw new ValidationErrorClass(
@@ -116,7 +114,6 @@ export function validateNoteContent(content: unknown): any[] {
       )
     }
 
-    // Sanitize text content
     if (node.children && Array.isArray(node.children)) {
       node.children = node.children.map((child: any) => {
         if (child.text && typeof child.text === 'string') {
@@ -153,7 +150,6 @@ export function validateFileUpload(file: File): void {
     )
   }
 
-  // Validate file name
   if (file.name.includes('..') || file.name.includes('/') || file.name.includes('\\')) {
     throw new ValidationErrorClass(
       ERROR_CODES.VALIDATION_FAILED,
@@ -172,21 +168,16 @@ export function validateGoogleUserInfo(userInfo: GoogleUserInfo): GoogleUserInfo
   const required = ['email', 'name']
   for (const field of required) {
     if (!userInfo[field as keyof GoogleUserInfo]) {
-      throw new SecurityError(
-        ERROR_CODES.VALIDATION_FAILED,
-        `Missing required field: ${field}`
-      )
+      throw new SecurityError(ERROR_CODES.VALIDATION_FAILED, `Missing required field: ${field}`)
     }
   }
 
-  // Validate email format
   const email = userInfo.email!
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(email)) {
     throw new SecurityError(ERROR_CODES.VALIDATION_FAILED, 'Invalid email format')
   }
 
-  // Sanitize user data
   return {
     name: sanitizeHtml(userInfo.name || ''),
     email: email.toLowerCase().trim(),
@@ -200,38 +191,29 @@ export function validateDecodedGoogleUser(userInfo: any): DecodedGoogleUser {
     throw new SecurityError(ERROR_CODES.VALIDATION_FAILED, 'Invalid user info received')
   }
 
-  // For existing data, be more lenient - check if we have the essential fields
   if (!userInfo.email || !userInfo.name) {
-    throw new SecurityError(
-      ERROR_CODES.VALIDATION_FAILED,
-      'Missing required fields: email or name'
-    )
+    throw new SecurityError(ERROR_CODES.VALIDATION_FAILED, 'Missing required fields: email or name')
   }
 
-  // Validate email format
   const email = userInfo.email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(email)) {
     throw new SecurityError(ERROR_CODES.VALIDATION_FAILED, 'Invalid email format')
   }
 
-  // Validate token if present
   if (userInfo.token) {
     validateToken(userInfo.token)
   }
 
-  // Validate token expiry if present
   if (userInfo.tokenExpiry && (typeof userInfo.tokenExpiry !== 'number' || userInfo.tokenExpiry <= 0)) {
     throw new SecurityError(ERROR_CODES.VALIDATION_FAILED, 'Invalid token expiry')
   }
 
-  // If token or expiry is missing, this might be legacy data - handle gracefully
   if (!userInfo.token || !userInfo.tokenExpiry) {
     console.warn('Legacy user data detected - missing token or expiry fields')
     throw new SecurityError(ERROR_CODES.VALIDATION_FAILED, 'Legacy user data format - please re-authenticate')
   }
 
-  // Sanitize user data
   return {
     name: sanitizeHtml(userInfo.name || ''),
     email: email.toLowerCase().trim(),
@@ -251,7 +233,6 @@ export function validateToken(token: unknown): string {
     throw new SecurityError(ERROR_CODES.UNAUTHORIZED, 'Token too short')
   }
 
-  // Basic token format validation (JWT-like) - be more lenient for existing data
   const parts = token.split('.')
   if (parts.length < 2) {
     throw new SecurityError(ERROR_CODES.UNAUTHORIZED, 'Invalid token structure')
@@ -264,9 +245,8 @@ export function isTokenExpired(expiry: number): boolean {
   if (typeof expiry !== 'number' || expiry <= 0) {
     return true
   }
-
   // Add 5-minute buffer before expiry
-  return Date.now() >= (expiry - 5 * 60 * 1000)
+  return Date.now() >= expiry - 5 * 60 * 1000
 }
 
 // Rate limiting (simple in-memory implementation)
@@ -283,8 +263,6 @@ export class RateLimiter {
   isAllowed(identifier: string): boolean {
     const now = Date.now()
     const requests = this.requests.get(identifier) || []
-
-    // Remove old requests outside the window
     const validRequests = requests.filter(time => now - time < this.windowMs)
 
     if (validRequests.length >= this.maxRequests) {
@@ -309,43 +287,6 @@ export class RateLimiter {
   }
 }
 
-// CSRF protection utilities
-export function generateCSRFToken(): string {
-  const array = new Uint8Array(32)
-  crypto.getRandomValues(array)
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
-}
-
-export function validateCSRFToken(token: string, sessionToken: string): boolean {
-  if (!token || !sessionToken) {
-    return false
-  }
-
-  return token === sessionToken
-}
-
-// Content Security Policy helper
-export function getCSPHeaders(): Record<string, string> {
-  return {
-    'Content-Security-Policy': [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://apis.google.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https: blob:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://www.googleapis.com https://accounts.google.com",
-      "frame-src 'none'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join('; '),
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-  }
-}
-
 // Error handling utilities
 export function createAppError(code: string, message: string, details?: Record<string, unknown>): AppError {
   return {
@@ -361,24 +302,11 @@ export function isSecurityError(error: unknown): error is SecurityError {
 }
 
 export function getErrorMessage(error: unknown): string {
-  if (isSecurityError(error)) {
-    return error.message
-  }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  if (typeof error === 'string') {
-    return error
-  }
-
+  if (isSecurityError(error)) return error.message
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
   return 'An unexpected error occurred'
 }
 
-// Export default rate limiter instance
-const rateLimitConfig = {
-  maxRequests: 100,
-  windowMs: 60 * 1000
-}
-export const apiRateLimiter = new RateLimiter(rateLimitConfig.maxRequests, rateLimitConfig.windowMs) // 100 requests per minute
+// Default rate limiter instance
+export const apiRateLimiter = new RateLimiter(100, 60 * 1000) // 100 requests per minute

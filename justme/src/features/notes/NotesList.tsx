@@ -58,18 +58,21 @@ export default function NotesList({ onNoteSelect, onNotePreview, onNoteCreate }:
   const [searchQuery, setSearchQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const filteredNotes = searchQuery.trim() === ''
-    ? notes
-    : notes.filter((note) => {
-        const q = searchQuery.toLowerCase()
-        const titleMatch = note.title?.toLowerCase().includes(q)
-        const contentMatch = note.content?.some((node: any) =>
-          node.children?.some((leaf: any) =>
-            leaf.text?.toLowerCase().includes(q)
-          )
+  const filteredNotes = useMemo(() => {
+    const baseNotes = notes.filter(n => !n.title.startsWith('journal::'))
+    if (searchQuery.trim() === '') return baseNotes
+
+    const q = searchQuery.toLowerCase()
+    return baseNotes.filter((note) => {
+      const titleMatch = note.title?.toLowerCase().includes(q)
+      const contentMatch = note.content?.some((node: any) =>
+        node.children?.some((leaf: any) =>
+          leaf.text?.toLowerCase().includes(q)
         )
-        return titleMatch || contentMatch
-      })
+      )
+      return titleMatch || contentMatch
+    })
+  }, [notes, searchQuery])
 
   useEffect(() => {
     if (isModalOpen && inputRef.current) {
@@ -162,7 +165,7 @@ export default function NotesList({ onNoteSelect, onNotePreview, onNoteCreate }:
       </div>
 
       {/* List content - Scrollable */}
-      <div className="flex-1 overflow-y-auto px-2">
+      <div className="flex-1 overflow-y-auto scroll-container px-2">
         {notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2">
             <p className="text-gray-400 text-sm font-sans">No notes yet</p>

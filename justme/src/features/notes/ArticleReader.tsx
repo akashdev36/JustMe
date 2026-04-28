@@ -23,6 +23,7 @@ interface SelectionState {
 function GoogleDriveImage({ fileId, caption }: { fileId: string; caption?: string }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -44,24 +45,51 @@ function GoogleDriveImage({ fileId, caption }: { fileId: string; caption?: strin
   }, [fileId])
 
   return (
-    <div className="my-12 flex flex-col items-center group">
-      <div className={`w-full relative rounded-xl overflow-hidden shadow-sm transition-all duration-700 ${isLoading ? 'bg-gray-50 h-[300px] animate-pulse' : 'bg-white'}`}>
-        {imgUrl && (
-          <img 
-            src={imgUrl} 
-            alt={caption || 'Story image'} 
-            className="w-full h-auto object-cover transition-opacity duration-500"
-            style={{ opacity: isLoading ? 0 : 1 }}
-            onLoad={() => setIsLoading(false)}
-          />
+    <>
+      <div className="my-6 flex flex-col items-start group">
+        <div 
+          onClick={() => setIsExpanded(true)}
+          className={`w-full max-w-[300px] max-h-[300px] relative rounded-2xl overflow-hidden shadow-sm transition-all duration-700 cursor-zoom-in ${isLoading ? 'bg-gray-50 h-[200px] animate-pulse' : 'bg-white hover:shadow-md'}`}
+        >
+          {imgUrl && (
+            <img 
+              src={imgUrl} 
+              alt={caption || 'Story image'} 
+              className="w-full h-full max-h-[300px] object-cover transition-opacity duration-500 hover:scale-105 transition-transform duration-500"
+              style={{ opacity: isLoading ? 0 : 1 }}
+              onLoad={() => setIsLoading(false)}
+            />
+          )}
+        </div>
+        {caption && (
+          <p className="mt-2 text-left text-[12px] font-sans text-gray-400 tracking-tight leading-relaxed max-w-[320px] italic">
+            {caption}
+          </p>
         )}
       </div>
-      {caption && (
-        <p className="mt-4 text-center text-sm font-sans text-gray-500 tracking-tight leading-relaxed max-w-xl italic">
-          {caption}
-        </p>
+
+      {/* Lightbox Overlay */}
+      {isExpanded && imgUrl && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-300"
+          onClick={() => setIsExpanded(false)}
+        >
+          <button className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+          <img 
+            src={imgUrl} 
+            alt={caption || 'Expanded image'} 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300"
+          />
+          {caption && (
+            <p className="mt-4 text-white/70 text-sm font-sans max-w-2xl text-center">{caption}</p>
+          )}
+        </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -206,27 +234,27 @@ export default function ArticleReader({ content, embedded, onUpdateNote }: Artic
       return <div key={idx} className="h-8" />
     }
 
-    if (isHeading1) return <h1 key={idx} data-index={idx} className="font-serif text-[42px] font-bold text-[#292929] leading-[1.2] mt-12 mb-6 tracking-tight">{innerContent}</h1>
-    if (isHeading2) return <h2 key={idx} data-index={idx} className="font-serif text-[30px] font-bold text-[#292929] leading-[1.2] mt-10 mb-5 tracking-tight">{innerContent}</h2>
-    if (isQuote) return <blockquote key={idx} data-index={idx} className="border-l-[3px] border-gray-900 pl-8 my-10 italic text-[24px] text-gray-500 leading-[1.5] font-serif">{innerContent}</blockquote>
+    if (isHeading1) return <h1 key={idx} data-index={idx} className="font-serif text-[28px] md:text-[36px] font-bold text-[#292929] leading-[1.2] mt-8 mb-4 tracking-tight">{innerContent}</h1>
+    if (isHeading2) return <h2 key={idx} data-index={idx} className="font-serif text-[22px] md:text-[28px] font-bold text-[#292929] leading-[1.2] mt-6 mb-3 tracking-tight">{innerContent}</h2>
+    if (isQuote) return <blockquote key={idx} data-index={idx} className="border-l-[2px] border-gray-900 pl-6 my-8 italic text-[18px] md:text-[22px] text-gray-500 leading-[1.5] font-serif">{innerContent}</blockquote>
     if (isListItem) {
       return (
-        <div key={idx} data-index={idx} className="relative pl-8 mb-4 flex items-start group">
-          <span className="absolute left-1 top-[13px] w-[6px] h-[6px] rounded-full bg-[#292929]" aria-hidden="true" />
-          <div className="font-serif text-[21px] leading-[1.6] text-[#292929] tracking-[-0.003em] font-normal antialiased">{innerContent}</div>
+        <div key={idx} data-index={idx} className="relative pl-6 mb-3 flex items-start group">
+          <span className="absolute left-1 top-[11px] w-[5px] h-[5px] rounded-full bg-[#292929]" aria-hidden="true" />
+          <div className="font-serif text-[16px] md:text-[18px] leading-[1.5] text-[#292929] tracking-[-0.003em] font-normal antialiased">{innerContent}</div>
         </div>
       )
     }
 
     return (
-      <p key={idx} data-index={idx} className="font-serif text-[21px] leading-[1.6] text-[#292929] mb-8 tracking-[-0.003em] font-normal antialiased">
+      <p key={idx} data-index={idx} className="font-serif text-[16px] md:text-[18px] leading-[1.5] text-[#292929] mb-5 tracking-[-0.003em] font-normal antialiased">
         {innerContent}
       </p>
     )
   })
 
   const containerClass = embedded ? "w-full px-0 relative" : "flex-1 overflow-y-auto bg-white relative"
-  const innerClass = embedded ? "w-full py-10" : "max-w-3xl mx-auto px-8 py-16"
+  const innerClass = embedded ? "w-full py-6" : "max-w-3xl mx-auto px-6 md:px-8 py-8 md:py-12"
 
   return (
     <div className={containerClass}>

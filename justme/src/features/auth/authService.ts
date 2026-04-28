@@ -1,11 +1,9 @@
-export type DecodedGoogleUser = {
-  name: string
-  email: string
-  picture: string
-  token: string
-  tokenExpiry: number // Unix ms — when the access token expires
-}
+import type { DecodedGoogleUser } from '../../shared/types'
 
+/**
+ * Fetches user profile from Google's userinfo endpoint.
+ * This is the single place that calls the Google userinfo API.
+ */
 export async function fetchUserProfile(
   accessToken: string,
   expiresIn = 3600

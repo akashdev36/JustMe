@@ -30,42 +30,23 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.setState({
-      error,
-      errorInfo,
-    })
+    this.setState({ error, errorInfo })
 
-    // Log error to console in development
     if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught an error:', error, errorInfo)
     }
 
-    // Call custom error handler if provided
     this.props.onError?.(error, errorInfo)
-
-    // In production, you might want to send this to an error reporting service
-    if (!import.meta.env.DEV) {
-      // Example: sendToErrorReporting(error, errorInfo)
-    }
   }
 
   handleReset = () => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    })
+    this.setState({ hasError: false, error: null, errorInfo: null })
   }
 
   render() {
     if (this.state.hasError) {
       const FallbackComponent = this.props.fallback || DefaultErrorFallback
-      return (
-        <FallbackComponent
-          error={this.state.error!}
-          errorInfo={this.state.errorInfo!}
-        />
-      )
+      return <FallbackComponent error={this.state.error!} errorInfo={this.state.errorInfo!} />
     }
 
     return this.props.children
@@ -77,12 +58,7 @@ function DefaultErrorFallback({ error, errorInfo }: { error: Error; errorInfo: E
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
         <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-          <svg
-            className="w-6 h-6 text-red-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -91,11 +67,9 @@ function DefaultErrorFallback({ error, errorInfo }: { error: Error; errorInfo: E
             />
           </svg>
         </div>
-        
-        <h1 className="text-xl font-semibold text-gray-900 text-center mb-2">
-          Something went wrong
-        </h1>
-        
+
+        <h1 className="text-xl font-semibold text-gray-900 text-center mb-2">Something went wrong</h1>
+
         <p className="text-gray-600 text-center mb-6">
           We're sorry, but something unexpected happened. The error has been logged and we'll look into it.
         </p>
@@ -107,7 +81,7 @@ function DefaultErrorFallback({ error, errorInfo }: { error: Error; errorInfo: E
           >
             Reload Page
           </button>
-          
+
           <button
             onClick={() => window.history.back()}
             className="w-full flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
@@ -126,7 +100,7 @@ function DefaultErrorFallback({ error, errorInfo }: { error: Error; errorInfo: E
               <br />
               <strong>Stack:</strong> {error.stack}
               <br />
-              <strong>Component Stack:</strong> {errorInfo.componentStack}
+              <strong>Component Stack:</strong> {errorInfo?.componentStack || 'No stack trace available'}
             </div>
           </details>
         )}

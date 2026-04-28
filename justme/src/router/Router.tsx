@@ -4,15 +4,13 @@ import { useAuthStore } from '../features/auth/useAuthStore'
 import { useAuthInit } from '../features/auth/useAuthInit'
 import { DEFAULT_PUBLIC_ROUTE } from './routes.config'
 
-// Lazy load AppShell for protected routes
+// Lazy load via feature public APIs
 const AppShell = lazy(() => import('../features/shell/AppShell'))
-
-// Lazy load page components
 const Home = lazy(() => import('../features/home/Home'))
 const NotesPage = lazy(() => import('../features/notes/NotesPage'))
-const GoogleLoginButton = lazy(() => import('../features/auth/GoogleLoginButton'))
+const SignInPage = lazy(() => import('../features/auth/SignInPage'))
 
-// Loading fallback component
+// Loading fallback
 const RouteLoadingFallback = () => (
   <div className="min-h-screen w-full flex items-center justify-center bg-white">
     <div className="flex flex-col items-center gap-4">
@@ -22,66 +20,60 @@ const RouteLoadingFallback = () => (
   </div>
 )
 
-// Route guard component for protected routes
+// Route guard — protected routes
 interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
 function ProtectedRoute({ children }: ProtectedRouteProps): React.ReactElement | null {
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
-  
-  // Initialize auth only for protected routes
-  useAuthInit()
-  
+  const isLoggedIn = useAuthStore(state => state.isLoggedIn)
   if (!isLoggedIn) {
     return <Navigate to={DEFAULT_PUBLIC_ROUTE} replace />
   }
-  
   return <>{children}</>
 }
 
-// Route guard component for public routes
+// Route guard — public routes
 interface PublicRouteProps {
   children: React.ReactNode
 }
 
 function PublicRoute({ children }: PublicRouteProps): React.ReactElement | null {
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
-  
+  const isLoggedIn = useAuthStore(state => state.isLoggedIn)
   if (isLoggedIn) {
     return <Navigate to="/home" replace />
   }
-  
   return <>{children}</>
 }
 
-// Main router component
+// Main router — auth is initialized here so it runs on ALL routes
 export function AppRouter(): React.ReactElement {
+  useAuthInit()
+
   return (
     <Suspense fallback={<RouteLoadingFallback />}>
       <Routes>
-        {/* Public route - Login */}
-        <Route 
-          path="/" 
+        {/* Public — Sign In */}
+        <Route
+          path="/"
           element={
             <PublicRoute>
-              <GoogleLoginButton />
+              <SignInPage />
             </PublicRoute>
-          } 
+          }
         />
-        
-        {/* Protected routes with AppShell layout */}
+
+        {/* Protected — App Shell wraps all protected pages */}
         <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
           <Route path="/home" element={<Home />} />
           <Route path="/notes" element={<NotesPage />} />
         </Route>
-        
-        {/* Fallback route for 404 */}
+
+        {/* 404 fallback */}
         <Route path="*" element={<Navigate to={DEFAULT_PUBLIC_ROUTE} replace />} />
       </Routes>
     </Suspense>
   )
 }
 
-// Export route guards for use in other components
 export { ProtectedRoute, PublicRoute }

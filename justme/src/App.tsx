@@ -1,7 +1,11 @@
 import React from 'react'
 import { AppRouter } from './router'
-import ErrorBoundary from './components/ErrorBoundary'
-import './debug' // Import debug utilities
+import ErrorBoundary from './shared/components/ErrorBoundary'
+
+// Debug utilities (dev only)
+if (import.meta.env.DEV) {
+  import('./debug')
+}
 
 export default function App(): React.ReactElement {
   return (
@@ -10,4 +14,3 @@ export default function App(): React.ReactElement {
     </ErrorBoundary>
   )
 }
-

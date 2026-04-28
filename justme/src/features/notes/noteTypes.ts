@@ -1,7 +1,7 @@
-import type { NoteFile } from '../../types'
-
-// Re-export all Slate types from centralized location
+// noteTypes.ts — re-exports from shared for backward compatibility within this feature
+// Internal files in the notes feature can still import from here
 export type {
+  NoteFile,
   CustomText,
   CustomElement,
   ParagraphElement,
@@ -12,15 +12,12 @@ export type {
   NumberedListElement,
   ListItemElement,
   ImageElement,
-  SlateDescendant
-} from '../../types/slate'
-
-// Re-export NoteFile
-export type { NoteFile }
+  SlateDescendant,
+} from '../../shared/types'
 
 // Local store type (only used in this feature)
 export type NotesStore = {
-  notes: NoteFile[]
+  notes: import('../../shared/types').NoteFile[]
   activeNoteId: string | null
   isLoading: boolean
   isSaving: boolean

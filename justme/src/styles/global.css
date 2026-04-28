@@ -1,0 +1,51 @@
+/* ── Safe-area utilities ── */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);   /* home indicator height */
+  --sal: env(safe-area-inset-left);
+
+  --bottom-nav-h: 70px;
+  --bottom-nav-total: calc(var(--bottom-nav-h) + var(--sab));
+}
+
+/* Prevent iOS elastic bounce on body */
+html, body, #root {
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+/* Prevent iOS font inflation */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Touch fast-tap on all interactive elements */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Scrollable containers get momentum scroll */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Safe-area padding utilities */
+.pt-safe  { padding-top:    max(var(--sat), 0.1px); }
+.pb-safe  { padding-bottom: max(var(--sab), 0.1px); }
+.pl-safe  { padding-left:   max(var(--sal), 0.1px); }
+.pr-safe  { padding-right:  max(var(--sar), 0.1px); }
+.mb-safe  { margin-bottom:  max(var(--sab), 0.1px); }
+
+/* Bottom nav safe height */
+.h-bottom-nav      { height: var(--bottom-nav-h); }
+.pb-bottom-nav     { padding-bottom: var(--bottom-nav-total); }
+
+/* iOS Keyboard Fix Utility */
+.h-ios-vh {
+  height: 100vh;
+  height: 100dvh;
+}

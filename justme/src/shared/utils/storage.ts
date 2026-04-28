@@ -1,19 +1,14 @@
-// Storage utilities for managing localStorage data
+// Storage utilities — auth-layer keys only
+// Notes-specific keys live in src/features/notes/storage.ts
 
 export const STORAGE_KEYS = {
   USER: 'justme_user',
-  NOTES_FOLDER: 'justme_notes_folder_id',
-  IMAGES_FOLDER: 'justme_images_folder_id',
-  NOTES_CACHE: 'justme_notes_cache',
-  LAST_NOTE: 'justme_last_note',
 } as const
 
 export function clearAuthStorage(): void {
   try {
-    Object.values(STORAGE_KEYS).forEach(key => {
-      localStorage.removeItem(key)
-    })
-    console.log('All authentication data cleared from storage')
+    localStorage.removeItem(STORAGE_KEYS.USER)
+    console.log('Authentication data cleared from storage')
   } catch (error) {
     console.error('Failed to clear auth storage:', error)
   }
@@ -32,12 +27,12 @@ export function clearInvalidAuthData(): boolean {
       return true
     }
 
-    // Check if data has required fields for new validation
-    const hasRequiredFields = parsed && 
-      typeof parsed === 'object' && 
-      parsed.email && 
-      parsed.name && 
-      parsed.token && 
+    const hasRequiredFields =
+      parsed &&
+      typeof parsed === 'object' &&
+      parsed.email &&
+      parsed.name &&
+      parsed.token &&
       parsed.tokenExpiry
 
     if (!hasRequiredFields) {
@@ -56,15 +51,13 @@ export function clearInvalidAuthData(): boolean {
 
 export function getStorageInfo(): Record<string, boolean> {
   const info: Record<string, boolean> = {}
-  
   Object.entries(STORAGE_KEYS).forEach(([key, storageKey]) => {
     info[key] = localStorage.getItem(storageKey) !== null
   })
-  
   return info
 }
 
-// Call this function to clean up any invalid data on app startup
+// Call on app startup to clean up invalid data
 export function initializeStorage(): void {
   const cleared = clearInvalidAuthData()
   if (cleared) {

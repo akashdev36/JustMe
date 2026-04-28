@@ -1,5 +1,4 @@
 // Centralized Slate.js type declarations
-// This file should be imported once at the application root
 
 import type { Descendant } from 'slate'
 

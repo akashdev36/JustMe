@@ -1,25 +1,28 @@
 import { create } from 'zustand'
-import { validateNoteTitle, validateNoteContent } from '../../utils/security'
-import type { NoteFile, CustomElement, NotesState as INotesState, NotesActions } from '../../types'
+import { validateNoteTitle, validateNoteContent } from '../../shared/utils/security'
+import { useAuthStore } from '../auth/useAuthStore'
+import type { NoteFile, CustomElement, NotesState as INotesState, NotesActions } from '../../shared/types'
 import * as notesService from './notesService'
+import { NOTES_STORAGE_KEYS } from './storage'
 
-const OFFLINE_CACHE_KEY = 'justme_notes_cache'
-const LAST_NOTE_KEY = 'justme_last_note'
 const EMPTY_DOC: CustomElement[] = [{ type: 'paragraph', children: [{ text: '' }] }]
+
+// Configure notesService token getter once — this is the ONLY place auth touches notes
+notesService.configureTokenGetter(() => {
+  const token = useAuthStore.getState().getValidToken()
+  if (!token) throw new Error('Not authenticated with Google')
+  return token
+})
 
 // Debounce manager for auto-save
 class AutoSaveManager {
   private timers: Map<string, ReturnType<typeof setTimeout>> = new Map()
-  private readonly delay = 1000 // 1 second debounce
+  private readonly delay = 1000
 
   schedule(id: string, callback: () => Promise<void>): void {
-    // Clear existing timer for this note
     const existingTimer = this.timers.get(id)
-    if (existingTimer) {
-      clearTimeout(existingTimer)
-    }
+    if (existingTimer) clearTimeout(existingTimer)
 
-    // Schedule new timer
     const timer = setTimeout(async () => {
       try {
         await callback()
@@ -40,9 +43,7 @@ class AutoSaveManager {
   }
 
   cancelAll(): void {
-    for (const timer of this.timers.values()) {
-      clearTimeout(timer)
-    }
+    for (const timer of this.timers.values()) clearTimeout(timer)
     this.timers.clear()
   }
 
@@ -54,7 +55,6 @@ class AutoSaveManager {
 const autoSaveManager = new AutoSaveManager()
 
 interface NotesStore extends INotesState, NotesActions {
-  // Additional store-specific methods
   findNoteById: (id: string) => NoteFile | undefined
   getActiveNote: () => NoteFile | undefined
   searchNotes: (query: string) => NoteFile[]
@@ -63,38 +63,30 @@ interface NotesStore extends INotesState, NotesActions {
 
 function loadFromCache(): NoteFile[] {
   try {
-    const cached = localStorage.getItem(OFFLINE_CACHE_KEY)
+    const cached = localStorage.getItem(NOTES_STORAGE_KEYS.CACHE)
     if (!cached) return []
-    
     const parsed = JSON.parse(cached)
     if (!Array.isArray(parsed)) return []
-    
-    return parsed.filter(note => 
-      note && 
-      typeof note === 'object' && 
-      typeof note.id === 'string' && 
-      typeof note.title === 'string'
+    return parsed.filter(
+      note => note && typeof note === 'object' && typeof note.id === 'string' && typeof note.title === 'string'
     )
   } catch (error) {
     console.error('Failed to load notes from cache:', error)
-    localStorage.removeItem(OFFLINE_CACHE_KEY)
+    localStorage.removeItem(NOTES_STORAGE_KEYS.CACHE)
     return []
   }
 }
 
 function saveToCache(notes: NoteFile[]): void {
   try {
-    localStorage.setItem(OFFLINE_CACHE_KEY, JSON.stringify(notes))
+    localStorage.setItem(NOTES_STORAGE_KEYS.CACHE, JSON.stringify(notes))
   } catch (error) {
     console.error('Failed to save notes to cache:', error)
   }
 }
 
 function sanitizeNoteContent(content: unknown): CustomElement[] {
-  if (!Array.isArray(content) || content.length === 0) {
-    return EMPTY_DOC
-  }
-  
+  if (!Array.isArray(content) || content.length === 0) return EMPTY_DOC
   try {
     return validateNoteContent(content) as CustomElement[]
   } catch (error) {
@@ -104,26 +96,21 @@ function sanitizeNoteContent(content: unknown): CustomElement[] {
 }
 
 export const useNotesStore = create<NotesStore>((set, get) => ({
-  // Initial state
   notes: [],
-  activeNoteId: null,
+  activeNoteId: localStorage.getItem(NOTES_STORAGE_KEYS.LAST_NOTE),
   isLoading: false,
   isSaving: false,
   error: null,
   searchQuery: '',
 
-  // Basic actions
   setNotes: (notes: NoteFile[]) => {
-    const sanitized = notes.map((note) => ({
+    const sanitized = notes.map(note => ({
       ...note,
       content: sanitizeNoteContent(note.content),
     }))
-
-    // Sort by updatedAt descending
-    const sorted = [...sanitized].sort((a, b) => 
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    const sorted = [...sanitized].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     )
-
     set({ notes: sorted, error: null })
     saveToCache(sorted)
   },
@@ -131,53 +118,49 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   setActiveNoteId: (id: string | null) => {
     set({ activeNoteId: id })
     if (id) {
-      localStorage.setItem(LAST_NOTE_KEY, id)
+      localStorage.setItem(NOTES_STORAGE_KEYS.LAST_NOTE, id)
     } else {
-      localStorage.removeItem(LAST_NOTE_KEY)
+      localStorage.removeItem(NOTES_STORAGE_KEYS.LAST_NOTE)
     }
   },
 
-  setSearchQuery: (query: string) => {
-    set({ searchQuery: query })
+  setSearchQuery: (query: string) => set({ searchQuery: query }),
+  setLoading: (loading: boolean) => set({ isLoading: loading }),
+  setError: (error: string | null) => set({ error }),
+  clearError: () => set({ error: null }),
+
+  togglePin: async (id: string) => {
+    const { notes } = get()
+    const note = notes.find(n => n.id === id)
+    if (!note) return
+
+    const newPinned = !note.pinned
+    // Optimistic update
+    const updatedNotes = notes.map(n => n.id === id ? { ...n, pinned: newPinned } : n)
+    get().setNotes(updatedNotes)
+
+    try {
+      await notesService.saveNote(updatedNotes.find(n => n.id === id)!)
+    } catch (error) {
+      console.error('Failed to toggle pin:', error)
+      // Rollback
+      get().setNotes(notes)
+    }
   },
 
-  setLoading: (loading: boolean) => {
-    set({ isLoading: loading })
-  },
-
-  setError: (error: string | null) => {
-    set({ error })
-  },
-
-  clearError: () => {
-    set({ error: null })
-  },
-
-  // CRUD operations
   createNote: async (title?: string) => {
     try {
       set({ isLoading: true, error: null })
-
       const validatedTitle = validateNoteTitle(title || '')
       const id = crypto.randomUUID()
       const now = new Date().toISOString()
+      const newNote: NoteFile = { id, title: validatedTitle, content: EMPTY_DOC, createdAt: now, updatedAt: now }
 
-      const newNote: NoteFile = {
-        id,
-        title: validatedTitle,
-        content: EMPTY_DOC,
-        createdAt: now,
-        updatedAt: now,
-      }
-
-      // Optimistic update
       const updatedNotes = [newNote, ...get().notes]
       get().setNotes(updatedNotes)
       get().setActiveNoteId(id)
-
-      // Save to backend
-      await notesService.saveNote(newNote)
-      
+      const driveId = await notesService.saveNote(newNote)
+      get().setNotes(get().notes.map(n => n.id === id ? { ...n, driveId } : n))
       set({ isLoading: false })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create note'
@@ -190,39 +173,20 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     try {
       const currentNotes = get().notes
       const noteIndex = currentNotes.findIndex(n => n.id === id)
-      
-      if (noteIndex === -1) {
-        throw new Error('Note not found')
-      }
+      if (noteIndex === -1) throw new Error('Note not found')
 
       const currentNote = currentNotes[noteIndex]
       const now = new Date().toISOString()
+      const validatedChanges = { ...changes }
+      if (changes.title !== undefined) validatedChanges.title = validateNoteTitle(changes.title)
+      if (changes.content !== undefined) validatedChanges.content = sanitizeNoteContent(changes.content)
 
-      // Validate changes
-      let validatedChanges = { ...changes }
-      if (changes.title !== undefined) {
-        validatedChanges.title = validateNoteTitle(changes.title)
-      }
-      if (changes.content !== undefined) {
-        validatedChanges.content = sanitizeNoteContent(changes.content)
-      }
-
-      const updatedNote = { 
-        ...currentNote, 
-        ...validatedChanges, 
-        updatedAt: now 
-      }
-
-      // Optimistic update
+      const updatedNote = { ...currentNote, ...validatedChanges, updatedAt: now }
       const updatedNotes = [...currentNotes]
       updatedNotes[noteIndex] = updatedNote
-      
       get().setNotes(updatedNotes)
 
-      // Schedule auto-save
-      if (!autoSaveManager.hasPending(id)) {
-        set({ isSaving: true })
-      }
+      if (!autoSaveManager.hasPending(id)) set({ isSaving: true })
 
       autoSaveManager.schedule(id, async () => {
         try {
@@ -243,29 +207,20 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   deleteNote: async (id: string) => {
     try {
       set({ isLoading: true, error: null })
-
-      // Optimistic update
       const updatedNotes = get().notes.filter(n => n.id !== id)
       get().setNotes(updatedNotes)
 
-      // Update active note if necessary
       if (get().activeNoteId === id) {
         const nextNote = updatedNotes[0] || null
         get().setActiveNoteId(nextNote?.id || null)
       }
 
-      // Cancel any pending auto-save for this note
       autoSaveManager.cancel(id)
-
-      // Delete from backend
       await notesService.deleteNote(id)
-      
       set({ isLoading: false })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete note'
       set({ error: errorMessage, isLoading: false })
-      
-      // Rollback optimistic update on failure
       await get().loadNotes()
       throw error
     }
@@ -275,23 +230,19 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null })
 
-      // Load from cache first for immediate UI
+      // Show cached notes immediately while fetching from Drive
       const cachedNotes = loadFromCache()
-      if (cachedNotes.length > 0) {
-        get().setNotes(cachedNotes)
-      }
+      if (cachedNotes.length > 0) set({ notes: cachedNotes })
 
-      // Load from backend
-      const notes = await notesService.fetchAllNotes()
-      const sanitizedNotes = notes.map(note => ({
+      // Fetch full note content from Drive (reliable for all existing notes)
+      const fetchedNotes = await notesService.fetchAllNotes()
+      const sanitizedNotes = fetchedNotes.map(note => ({
         ...note,
         content: sanitizeNoteContent(note.content),
       }))
-
       get().setNotes(sanitizedNotes)
 
-      // Restore last active note
-      const lastId = localStorage.getItem(LAST_NOTE_KEY)
+      const lastId = localStorage.getItem(NOTES_STORAGE_KEYS.LAST_NOTE)
       if (lastId && sanitizedNotes.some(n => n.id === lastId)) {
         get().setActiveNoteId(lastId)
       } else if (sanitizedNotes.length > 0) {
@@ -304,18 +255,14 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load notes'
       set({ error: errorMessage, isLoading: false })
-      
-      // Keep cached notes if backend load fails
+      // Fall back to cache on error
       if (get().notes.length === 0) {
         const cachedNotes = loadFromCache()
-        if (cachedNotes.length > 0) {
-          get().setNotes(cachedNotes)
-        }
+        if (cachedNotes.length > 0) get().setNotes(cachedNotes)
       }
     }
   },
 
-  // Journal-specific methods
   findJournalNote: (dateStr: string) => {
     return get().notes.find(n => n.title === `journal::${dateStr}`)
   },
@@ -323,27 +270,16 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   createJournalNote: async (dateStr: string) => {
     try {
       set({ isLoading: true, error: null })
-
       const id = crypto.randomUUID()
       const now = new Date().toISOString()
       const title = `journal::${dateStr}`
+      const newNote: NoteFile = { id, title, content: EMPTY_DOC, createdAt: now, updatedAt: now }
 
-      const newNote: NoteFile = {
-        id,
-        title,
-        content: EMPTY_DOC,
-        createdAt: now,
-        updatedAt: now,
-      }
-
-      // Optimistic update
       const updatedNotes = [newNote, ...get().notes]
       get().setNotes(updatedNotes)
       get().setActiveNoteId(id)
-
-      // Save to backend
-      await notesService.saveNote(newNote)
-      
+      const driveId = await notesService.saveNote(newNote)
+      get().setNotes(get().notes.map(n => n.id === id ? { ...n, driveId } : n))
       set({ isLoading: false })
       return id
     } catch (error) {
@@ -353,10 +289,7 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     }
   },
 
-  // Store-specific utility methods
-  findNoteById: (id: string) => {
-    return get().notes.find(n => n.id === id)
-  },
+  findNoteById: (id: string) => get().notes.find(n => n.id === id),
 
   getActiveNote: () => {
     const { notes, activeNoteId } = get()
@@ -366,66 +299,82 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   searchNotes: (query: string) => {
     const { notes } = get()
     if (!query.trim()) return notes
-
     const searchTerm = query.toLowerCase()
-    return notes.filter(note => 
-      note.title.toLowerCase().includes(searchTerm) ||
-      note.content.some(node => 
-        node.children?.some((child: { text?: string }) => 
-          'text' in child && child.text?.toLowerCase().includes(searchTerm)
+    return notes.filter(
+      note =>
+        note.title.toLowerCase().includes(searchTerm) ||
+        note.content.some(node =>
+          node.children?.some(
+            (child: { text?: string }) => 'text' in child && child.text?.toLowerCase().includes(searchTerm)
+          )
         )
-      )
     )
   },
 
-  validateNote: (note: Partial<NoteFile>) => {
-    const validated: NoteFile = {
-      id: note.id || crypto.randomUUID(),
-      title: validateNoteTitle(note.title || ''),
-      content: sanitizeNoteContent(note.content || EMPTY_DOC),
-      createdAt: note.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      pinned: note.pinned || false,
-      tags: note.tags || [],
-    }
-
-    return validated
-  },
+  validateNote: (note: Partial<NoteFile>) => ({
+    id: note.id || crypto.randomUUID(),
+    title: validateNoteTitle(note.title || ''),
+    content: sanitizeNoteContent(note.content || EMPTY_DOC),
+    createdAt: note.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    pinned: note.pinned || false,
+    tags: note.tags || [],
+  }),
 }))
 
-// Selector hooks for better performance
+// Selector hooks
 export const useNotes = () => useNotesStore(state => state.notes)
 export const useActiveNoteId = () => useNotesStore(state => state.activeNoteId)
-export const useActiveNote = () => useNotesStore(state => {
-  const { notes, activeNoteId } = state
-  return activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined
-})
+export const useActiveNote = () =>
+  useNotesStore(state => {
+    const { notes, activeNoteId } = state
+    return activeNoteId ? notes.find(n => n.id === activeNoteId) : undefined
+  })
 export const useNotesIsLoading = () => useNotesStore(state => state.isLoading)
 export const useNotesIsSaving = () => useNotesStore(state => state.isSaving)
 export const useNotesError = () => useNotesStore(state => state.error)
 export const useNotesSearchQuery = () => useNotesStore(state => state.searchQuery)
 
-// Computed selector for filtered notes
 export const useFilteredNotes = () => {
   const notes = useNotes()
   const searchQuery = useNotesSearchQuery()
-  
-  if (!searchQuery.trim()) return notes
-
+  const baseNotes = notes.filter(n => !n.title.startsWith('journal::'))
+  if (!searchQuery.trim()) return baseNotes
   const searchTerm = searchQuery.toLowerCase()
-  return notes.filter(note => 
-    note.title.toLowerCase().includes(searchTerm) ||
-    note.content.some(node => 
-      node.children?.some((child: { text?: string }) => 
-        'text' in child && child.text?.toLowerCase().includes(searchTerm)
+  return baseNotes.filter(
+    note =>
+      note.title.toLowerCase().includes(searchTerm) ||
+      note.content.some(node =>
+        node.children?.some(
+          (child: { text?: string }) => 'text' in child && child.text?.toLowerCase().includes(searchTerm)
+        )
       )
-    )
   )
 }
 
-// Cleanup hook for component unmount
-export const useNotesCleanup = () => {
-  return () => {
-    autoSaveManager.cancelAll()
-  }
-}
+export const useNotesCleanup = () => () => autoSaveManager.cancelAll()
+
+// Journal-date selector — exposed for the Home feature to use
+export const useJournalDates = () =>
+  useNotesStore(
+    state =>
+      state.notes
+        .filter(n => n.title.startsWith('journal::'))
+        .map(n => n.title.replace('journal::', ''))
+        .join(',') // Return a stable string instead of a new Set object
+  )
+
+// Special days selector — returns a stable JSON string of { date: reason } for calendar gold stars
+export const useSpecialDays = () =>
+  useNotesStore(
+    state => {
+      const map: Record<string, string> = {}
+      state.notes
+        .filter(n => n.title.startsWith('journal::') && n.specialDay)
+        .forEach(n => {
+          const date = n.title.replace('journal::', '')
+          map[date] = n.specialDay!.reason
+        })
+      return JSON.stringify(map) // stable string to prevent unnecessary re-renders
+    }
+  )
