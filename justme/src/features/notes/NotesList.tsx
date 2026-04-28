@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useNotesStore } from './useNotesStore'
 
 interface NotesListProps {
@@ -184,7 +184,7 @@ export default function NotesList({ onNoteSelect, onNotePreview, onNoteCreate }:
           </div>
         ) : (
           <div className="flex flex-col gap-1">
-            {filteredNotes.map((note) => {
+            {filteredNotes.map((note: import('../../shared/types').NoteFile) => {
               const isActive = note.id === activeNoteId
               const titleToShow = note.title.trim() === '' ? 'Untitled' : note.title
               const previewText = getNotePreview(note.content)

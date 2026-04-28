@@ -247,14 +247,14 @@ export async function fetchAllNotes(): Promise<NoteFile[]> {
         const fileRes = await driveFetch(`/${f.id}?alt=media`)
         const note = (await fileRes.json()) as NoteFile
         // Attach the Drive file ID for faster future access
-        return { ...note, driveId: f.id }
+        return { ...note, driveId: f.id } as NoteFile
       } catch {
         return null
       }
     })
 
     const results = await Promise.all(notesPromises)
-    return results.filter((n): n is NoteFile => n !== null)
+    return results.filter(Boolean) as NoteFile[]
   } catch (err) {
     console.error('Failed fetching from Drive', err)
     const cache = localStorage.getItem(NOTES_STORAGE_KEYS.CACHE)

@@ -9,7 +9,6 @@ export default function NotesPage(): React.ReactElement {
     loadNotes, 
     isLoading, 
     activeNoteId, 
-    setActiveNoteId,
     notes,
     isSaving 
   } = useNotesStore()
