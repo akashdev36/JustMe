@@ -13,8 +13,6 @@ declare global {
   }
 }
 
-// Header is gone, HamburgerIcon no longer needed
-
 export default function AppShell(): React.ReactElement {
   const navigate = useNavigate()
   const location = useLocation()
@@ -27,24 +25,30 @@ export default function AppShell(): React.ReactElement {
   // Load notes globally on login — ensures Home + Journal always have up-to-date data
   useEffect(() => {
     if (user) loadNotes()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email])
+
+  // PiP broadcast channel
+  useEffect(() => {
+    const pipChannel = new BroadcastChannel('justme_pip')
+    pipChannel.onmessage = (e) => {
+      if (e.data?.type === 'RESIZE' && pipWindowRef.current) {
+        pipWindowRef.current.resizeTo(e.data.width, e.data.height)
+      }
+    }
+    return () => { pipChannel.close() }
+  }, [])
 
   const handleSignOut = () => {
     logout()
     navigate('/')
   }
 
-  useEffect(() => {
-    const pipChannel = new BroadcastChannel('justme_pip')
-
-    pipChannel.onmessage = (e) => {
-      if (e.data?.type === 'RESIZE' && pipWindowRef.current) {
-        pipWindowRef.current.resizeTo(e.data.width, e.data.height)
-      }
-    }
-
-    return () => {
+  return (
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-[#f0f4f7]">
+      <header className="h-[56px] md:h-[64px] px-4 md:px-6 bg-[#f0f4f7] flex items-center justify-between flex-shrink-0 z-40 border-b border-gray-100/50">
+        <div className="flex items-center gap-4 md:gap-6">
+          <button
             type="button"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="hidden md:flex w-[32px] h-[32px] items-center justify-center rounded-lg border border-[#00aeb1] text-[#00aeb1] transition-all active:scale-95 hover:bg-white"
@@ -66,7 +70,6 @@ export default function AppShell(): React.ReactElement {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* USER PROFILE */}
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
@@ -99,19 +102,15 @@ export default function AppShell(): React.ReactElement {
       {/* Main Container: Sidebar + Content */}
       <div className="flex flex-1 overflow-hidden relative">
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-
-        {/* Page content */}
         <main className="flex-1 overflow-hidden flex flex-col relative">
           <Outlet />
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
+      {/* Mobile Bottom Navigation */}
       <nav className="md:hidden h-[56px] bg-white border-t border-gray-100 flex items-center justify-around px-6 z-40 pb-safe">
         <button
-          onClick={() => {
-            navigate('/home')
-          }}
+          onClick={() => navigate('/home')}
           className={`flex flex-col items-center gap-0.5 transition-all ${
             location.pathname === '/home' ? 'text-[#00aeb1]' : 'text-gray-400'
           }`}
@@ -124,9 +123,7 @@ export default function AppShell(): React.ReactElement {
         </button>
 
         <button
-          onClick={() => {
-            navigate('/notes')
-          }}
+          onClick={() => navigate('/notes')}
           className={`flex flex-col items-center gap-0.5 transition-all ${
             location.pathname === '/notes' ? 'text-[#00aeb1]' : 'text-gray-400'
           }`}
